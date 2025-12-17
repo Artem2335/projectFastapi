@@ -12,6 +12,13 @@ from app.users.router import router as router_users
 from app.movies.router import router as router_movies
 from app.reviews.router import router as router_reviews
 from app.favorites.router import router as router_favorites
+
+# Import all models for database initialization
+from app.users.models import User
+from app.movies.models import Movie
+from app.reviews.models import Review, Rating
+from app.favorites.models import Favorite
+
 from app import db
 import os
 
