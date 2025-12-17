@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('email', sa.String(), nullable=False, unique=True),
         sa.Column('password', sa.String(), nullable=False),
-        sa.Column('username', sa.String(), nullable=False),
+        sa.Column('username', sa.String(), nullable=False, unique=True),
         sa.Column('is_user', sa.Boolean(), nullable=False, server_default='1'),
         sa.Column('is_moderator', sa.Boolean(), nullable=False, server_default='0'),
         sa.Column('is_admin', sa.Boolean(), nullable=False, server_default='0'),
@@ -41,6 +41,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), nullable=True),
     )
     op.create_index('ix_users_email', 'users', ['email'])
+    op.create_index('ix_users_username', 'users', ['username'])
     
     # Create movies table
     op.create_table(
@@ -48,8 +49,8 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('title', sa.String(length=255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('genre', sa.String(length=100), nullable=False),
-        sa.Column('year', sa.Integer(), nullable=False),
+        sa.Column('genre', sa.String(length=100), nullable=True),
+        sa.Column('year', sa.Integer(), nullable=True),
         sa.Column('poster_url', sa.String(length=500), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -60,15 +61,17 @@ def upgrade() -> None:
         'reviews',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('movie_id', sa.Integer(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=True),
+        sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('text', sa.Text(), nullable=False),
         sa.Column('rating', sa.Integer(), nullable=True),
         sa.Column('approved', sa.Boolean(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     )
+    op.create_index('ix_reviews_movie_id', 'reviews', ['movie_id'])
+    op.create_index('ix_reviews_user_id', 'reviews', ['user_id'])
     
     # Create ratings table
     op.create_table(
@@ -79,9 +82,11 @@ def upgrade() -> None:
         sa.Column('value', sa.Float(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     )
+    op.create_index('ix_ratings_movie_id', 'ratings', ['movie_id'])
+    op.create_index('ix_ratings_user_id', 'ratings', ['user_id'])
     
     # Create favorites table
     op.create_table(
@@ -91,9 +96,11 @@ def upgrade() -> None:
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     )
+    op.create_index('ix_favorites_movie_id', 'favorites', ['movie_id'])
+    op.create_index('ix_favorites_user_id', 'favorites', ['user_id'])
 
 
 def downgrade() -> None:
