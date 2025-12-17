@@ -4,10 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.config import get_db_url
 from app.database import Base
-from app.users.models import User
-from app.movies.models import Movie
-from app.reviews.models import Review, Rating
-from app.favorites.models import Favorite
+from app.models import User, Movie, Review, Rating, Favorite
 import bcrypt
 
 DATABASE_URL = get_db_url()
