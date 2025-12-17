@@ -89,6 +89,29 @@ def create_movie(data: MovieCreate):
     )
     return movie
 
+@router.delete("/{movie_id}")
+def delete_movie(movie_id: int):
+    """
+    Delete movie by ID (admin only)
+    
+    This will also delete all movie's related data:
+    - Reviews
+    - Ratings
+    - Favorites
+    """
+    # Check if movie exists
+    movie = db.get_movie_by_id(movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    
+    # Delete movie
+    success = db.delete_movie(movie_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete movie")
+    
+    return {"status": "deleted", "movie_id": movie_id}
+
 # ========== REVIEWS ==========
 
 @router.post("/{movie_id}/reviews")
