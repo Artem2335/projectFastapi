@@ -89,6 +89,48 @@ def create_movie(data: MovieCreate):
     )
     return movie
 
+@router.delete("/{movie_id}")
+def delete_movie(movie_id: int):
+    """
+    Delete a movie and all related data (admin only)
+    
+    This will delete:
+    - Movie entry
+    - All reviews for the movie
+    - All ratings for the movie
+    - All favorites containing this movie
+    """
+    movie = db.get_movie_by_id(movie_id)
+    
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    
+    conn = db.get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Delete related data (cascading)
+        # Delete reviews
+        cursor.execute("DELETE FROM reviews WHERE movie_id = ?", (movie_id,))
+        # Delete ratings
+        cursor.execute("DELETE FROM ratings WHERE movie_id = ?", (movie_id,))
+        # Delete favorites
+        cursor.execute("DELETE FROM favorites WHERE movie_id = ?", (movie_id,))
+        # Delete movie
+        cursor.execute("DELETE FROM movies WHERE id = ?", (movie_id,))
+        
+        conn.commit()
+        return {
+            "status": "deleted",
+            "message": f"Movie '{movie['title']}' and all related data have been deleted",
+            "movie_id": movie_id
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting movie: {str(e)}")
+    finally:
+        conn.close()
+
 # ========== REVIEWS ==========
 
 @router.post("/{movie_id}/reviews")
