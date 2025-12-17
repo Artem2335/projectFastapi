@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from app import db
+from app.security import verify_password
 import json
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -34,7 +35,7 @@ def register(data: UserRegister):
 
 @router.post("/login")
 def login(data: UserLogin):
-    """Login user by username"""
+    """Login user by username with secure password verification"""
     print(f"Login attempt with: {json.dumps({'username': data.username, 'password': '***'})}")
     
     # Get user by username
@@ -43,7 +44,8 @@ def login(data: UserLogin):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if user['password'] != data.password:
+    # Verify password using bcrypt
+    if not verify_password(data.password, user['password']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     return user
@@ -65,6 +67,7 @@ def update_user(user_id: int, data: UserUpdate):
     
     Can update: email, password, username
     Only non-None fields will be updated
+    Passwords are automatically hashed
     """
     # Check if user exists
     user = db.get_user_by_id(user_id)
