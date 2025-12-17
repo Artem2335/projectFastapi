@@ -1,4 +1,4 @@
-from sqlalchemy import text, String, Integer, Float, Text
+from sqlalchemy import String, Integer, Float, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base, int_pk
 from typing import TYPE_CHECKING
@@ -17,7 +17,7 @@ class Review(Base):
     user_id: Mapped[int] = mapped_column(nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     rating: Mapped[int] = mapped_column(Integer, nullable=True)  # рейтинг в рецензии (1-5)
-    approved: Mapped[bool] = mapped_column(default=False, server_default=text('false'), nullable=False)
+    approved: Mapped[bool] = mapped_column(default=False, server_default="0", nullable=False)
 
     # Relationships
     movie: Mapped["Movie"] = relationship("Movie", back_populates="reviews", foreign_keys=[movie_id])
