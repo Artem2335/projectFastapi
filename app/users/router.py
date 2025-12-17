@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from app import db
 from app.users.schemas import UserUpdate, UserResponse
 from app.users.dao import UserDAO
+from app.security import verify_password
 from sqlalchemy.orm import Session
 from app.database import get_db
 import json
@@ -22,18 +23,26 @@ class UserLogin(BaseModel):
 
 @router.post("/register")
 def register(data: UserRegister):
-    """Register a new user"""
+    """Register a new user with automatic password hashing"""
     # Check if user already exists
     existing = db.get_user_by_email(data.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
+    
+    existing_username = db.get_user_by_username(data.username)
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
     
     user = db.create_user(data.email, data.password, data.username)
     return user
 
 @router.post("/login")
 def login(data: UserLogin):
-    """Login user by username"""
+    """
+    Login user by username
+    
+    Password is automatically verified against the hashed password in database
+    """
     print(f"Login attempt with: {json.dumps({'username': data.username, 'password': '***'})}")
     
     # Get user by username
@@ -42,7 +51,8 @@ def login(data: UserLogin):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if user['password'] != data.password:
+    # Verify password using bcrypt
+    if not verify_password(data.password, user['password']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     return user
@@ -79,7 +89,7 @@ def update_user(user_id: int, data: UserUpdate):
     Only provide fields you want to update:
     - email: new email address
     - username: new username
-    - password: new password
+    - password: new password (will be automatically hashed)
     """
     user = db.get_user_by_id(user_id)
     
@@ -114,8 +124,11 @@ def update_user(user_id: int, data: UserUpdate):
         params.append(data.username)
     
     if data.password:
+        # Hash password before storing
+        from app.security import hash_password
+        hashed_password = hash_password(data.password)
         updates.append("password = ?")
-        params.append(data.password)
+        params.append(hashed_password)
     
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
