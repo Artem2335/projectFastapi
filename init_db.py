@@ -1,98 +1,60 @@
-"""Initialize SQLite database"""
-import sqlite3
-import os
+"""Initialize SQLite database using SQLAlchemy async"""
+import asyncio
 from pathlib import Path
+from sqlalchemy.ext.asyncio import create_async_engine
+from app.database import Base
+from app.users.models import User
+from app.movies.models import Movie
+from app.reviews.models import Review, Rating
+from app.favorites.models import Favorite
+from app.config import get_db_url
 
+DATABASE_URL = get_db_url()
 DB_PATH = Path(__file__).parent / "kinovzor.db"
 
-def init_db():
-    """Create all tables"""
-    
-    # Remove old db if exists
+async def init_db():
+    """
+    Initialize database using SQLAlchemy.
+    Creates all tables from models.
+    """
+    # Remove old database if exists
     if DB_PATH.exists():
-        os.remove(DB_PATH)
+        DB_PATH.unlink()
+        print(f"🗑️ Removed old database: {DB_PATH}")
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute("""
-    CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        username TEXT NOT NULL,
-        is_user BOOLEAN DEFAULT 1,
-        is_moderator BOOLEAN DEFAULT 0,
-        is_admin BOOLEAN DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # Create async engine
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False},
     )
-    """)
     
-    # Movies table
-    cursor.execute("""
-    CREATE TABLE movies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        genre TEXT NOT NULL,
-        year INTEGER NOT NULL,
-        poster_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # Reviews table - user_id is nullable now
-    cursor.execute("""
-    CREATE TABLE reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie_id INTEGER NOT NULL,
-        user_id INTEGER,
-        text TEXT NOT NULL,
-        rating INTEGER,
-        approved BOOLEAN DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (movie_id) REFERENCES movies(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
-    
-    # Ratings table
-    cursor.execute("""
-    CREATE TABLE ratings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        value REAL NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (movie_id) REFERENCES movies(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
-    
-    # Favorites table
-    cursor.execute("""
-    CREATE TABLE favorites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (movie_id) REFERENCES movies(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
-    
-    conn.commit()
-    conn.close()
-    
-    print(f"✅ Database initialized successfully!")
-    print(f"📁 File: {DB_PATH}")
-    print(f"🗓️ Tables: users, movies, reviews, ratings, favorites")
+    try:
+        # Create all tables
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        
+        print("\n" + "="*50)
+        print("✅ DATABASE INITIALIZATION SUCCESS!")
+        print("="*50)
+        print(f"📁 Database: {DB_PATH}")
+        print(f"📊 Tables created:")
+        print(f"   - users")
+        print(f"   - movies")
+        print(f"   - reviews")
+        print(f"   - ratings")
+        print(f"   - favorites")
+        print("="*50 + "\n")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR initializing database: {e}\n")
+        raise
+    finally:
+        await engine.dispose()
+
+def main():
+    """Run initialization"""
+    asyncio.run(init_db())
 
 if __name__ == "__main__":
-    init_db()
+    main()
