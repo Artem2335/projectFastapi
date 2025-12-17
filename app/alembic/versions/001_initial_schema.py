@@ -24,6 +24,9 @@ depends_on = None
 def upgrade() -> None:
     """Create initial database schema"""
     
+    # Enable PRAGMA foreign_keys for SQLite
+    op.execute('PRAGMA foreign_keys=ON')
+    
     # Create users table
     op.create_table(
         'users',
@@ -100,3 +103,6 @@ def downgrade() -> None:
     op.drop_table('reviews')
     op.drop_table('movies')
     op.drop_table('users')
+    
+    # Disable PRAGMA foreign_keys
+    op.execute('PRAGMA foreign_keys=OFF')
