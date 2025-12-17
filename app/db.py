@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
 from datetime import datetime
+from app.security import hash_password, verify_password
 
 DB_PATH = Path(__file__).parent.parent / "kinovzor.db"
 
@@ -50,17 +51,38 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
     return dict_from_row(user)
 
 def create_user(email: str, password: str, username: str, is_moderator: bool = False) -> Dict:
-    """Create user with optional moderator flag"""
+    """Create user with automatic password hashing"""
     conn = get_db()
     cursor = conn.cursor()
+    
+    # Hash the password before storing
+    hashed_password = hash_password(password)
+    
     cursor.execute(
         "INSERT INTO users (email, password, username, is_moderator) VALUES (?, ?, ?, ?)",
-        (email, password, username, is_moderator)
+        (email, hashed_password, username, is_moderator)
     )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
     return get_user_by_id(user_id)
+
+def verify_user_password(user_id: int, password: str) -> bool:
+    """Verify a user's password"""
+    user = get_user_by_id(user_id)
+    if not user:
+        return False
+    return verify_password(password, user['password'])
+
+def authenticate_user(username: str, password: str) -> Optional[Dict]:
+    """Authenticate user by username and password"""
+    user = get_user_by_username(username)
+    if not user:
+        return None
+    
+    if verify_password(password, user['password']):
+        return user
+    return None
 
 # Movies
 def get_all_movies() -> List[Dict]:
