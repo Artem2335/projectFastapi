@@ -62,10 +62,15 @@ if STATIC_DIR.exists():
 else:
     print(f"\n⚠️ Warning: Static directory not found at {STATIC_DIR}")
 
-# Root redirect
+# Serve index.html from templates folder
 @app.get('/')
 async def root():
-    return RedirectResponse(url="/static/index.html", status_code=status.HTTP_303_SEE_OTHER)
+    templates_dir = Path(__file__).parent / "templates"
+    index_file = templates_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file), media_type="text/html")
+    else:
+        return {"message": "Welcome to KinoVzor API"}
 
 if __name__ == "__main__":
     import uvicorn
