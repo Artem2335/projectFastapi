@@ -62,6 +62,66 @@ def create_user(email: str, password: str, username: str, is_moderator: bool = F
     conn.close()
     return get_user_by_id(user_id)
 
+def update_user(user_id: int, email: Optional[str] = None, password: Optional[str] = None, 
+                username: Optional[str] = None, is_moderator: Optional[bool] = None,
+                is_admin: Optional[bool] = None) -> Optional[Dict]:
+    """Update user information"""
+    # Check if user exists
+    existing_user = get_user_by_id(user_id)
+    if not existing_user:
+        return None
+    
+    # Prepare update fields
+    updates = []
+    params = []
+    
+    if email is not None:
+        updates.append("email = ?")
+        params.append(email)
+    if password is not None:
+        updates.append("password = ?")
+        params.append(password)
+    if username is not None:
+        updates.append("username = ?")
+        params.append(username)
+    if is_moderator is not None:
+        updates.append("is_moderator = ?")
+        params.append(is_moderator)
+    if is_admin is not None:
+        updates.append("is_admin = ?")
+        params.append(is_admin)
+    
+    if not updates:
+        return existing_user
+    
+    params.append(user_id)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()
+    
+    return get_user_by_id(user_id)
+
+def delete_user(user_id: int) -> bool:
+    """Delete user by ID"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user exists
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    
+    # Delete user (cascading deletes will handle related records)
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return True
+
 # Movies
 def get_all_movies() -> List[Dict]:
     conn = get_db()
@@ -90,6 +150,28 @@ def create_movie(title: str, description: str, genre: str, year: int, poster_url
     movie_id = cursor.lastrowid
     conn.close()
     return get_movie_by_id(movie_id)
+
+def delete_movie(movie_id: int) -> bool:
+    """Delete movie by ID"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if movie exists
+    cursor.execute("SELECT * FROM movies WHERE id = ?", (movie_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    
+    # Delete reviews first (or let cascade delete handle it)
+    cursor.execute("DELETE FROM reviews WHERE movie_id = ?", (movie_id,))
+    cursor.execute("DELETE FROM ratings WHERE movie_id = ?", (movie_id,))
+    cursor.execute("DELETE FROM favorites WHERE movie_id = ?", (movie_id,))
+    
+    # Delete the movie
+    cursor.execute("DELETE FROM movies WHERE id = ?", (movie_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 # Reviews
 def create_review(movie_id: int, user_id: int, text: str, rating: int = None) -> Dict:
