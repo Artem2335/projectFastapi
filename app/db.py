@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
 from datetime import datetime
+from app.security import hash_password
 
 DB_PATH = Path(__file__).parent.parent / "kinovzor.db"
 
@@ -50,12 +51,13 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
     return dict_from_row(user)
 
 def create_user(email: str, password: str, username: str, is_moderator: bool = False) -> Dict:
-    """Create user with optional moderator flag"""
+    """Create user with password hashing and optional moderator flag"""
+    hashed_password = hash_password(password)
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO users (email, password, username, is_moderator) VALUES (?, ?, ?, ?)",
-        (email, password, username, is_moderator)
+        (email, hashed_password, username, is_moderator)
     )
     conn.commit()
     user_id = cursor.lastrowid
@@ -65,7 +67,7 @@ def create_user(email: str, password: str, username: str, is_moderator: bool = F
 def update_user(user_id: int, email: Optional[str] = None, password: Optional[str] = None, 
                 username: Optional[str] = None, is_moderator: Optional[bool] = None,
                 is_admin: Optional[bool] = None) -> Optional[Dict]:
-    """Update user information"""
+    """Update user information with password hashing"""
     # Check if user exists
     existing_user = get_user_by_id(user_id)
     if not existing_user:
@@ -79,8 +81,10 @@ def update_user(user_id: int, email: Optional[str] = None, password: Optional[st
         updates.append("email = ?")
         params.append(email)
     if password is not None:
+        # Hash the new password
+        hashed_password = hash_password(password)
         updates.append("password = ?")
-        params.append(password)
+        params.append(hashed_password)
     if username is not None:
         updates.append("username = ?")
         params.append(username)
@@ -226,65 +230,6 @@ def delete_review(review_id: int) -> bool:
     conn.commit()
     conn.close()
     return True
-
-# Ratings - Calculate from reviews
-def get_rating_stats(movie_id: int) -> Dict:
-    """Получаем статистику рейтинга из оценок рецензий"""
-    conn = get_db()
-    cursor = conn.cursor()
-    # считаем средние и количество оценок из рецензий
-    cursor.execute(
-        "SELECT COUNT(*) as count, AVG(rating) as average FROM reviews WHERE movie_id = ? AND rating IS NOT NULL",
-        (movie_id,)
-    )
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result and result['count'] > 0:
-        return {
-            "count": result['count'],
-            "average": round(float(result['average']), 1)
-        }
-    return {"count": 0, "average": None}
-
-def create_or_update_rating(movie_id: int, user_id: int, value: float) -> Dict:
-    """Legacy function - kept for compatibility"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Check if rating exists
-    cursor.execute("SELECT * FROM ratings WHERE movie_id = ? AND user_id = ?", (movie_id, user_id))
-    existing = cursor.fetchone()
-    
-    if existing:
-        cursor.execute("UPDATE ratings SET value = ? WHERE movie_id = ? AND user_id = ?", (value, movie_id, user_id))
-        rating_id = existing['id']
-    else:
-        cursor.execute(
-            "INSERT INTO ratings (movie_id, user_id, value) VALUES (?, ?, ?)",
-            (movie_id, user_id, value)
-        )
-        rating_id = cursor.lastrowid
-    
-    conn.commit()
-    conn.close()
-    return get_rating_by_id(rating_id)
-
-def get_rating_by_id(rating_id: int) -> Optional[Dict]:
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM ratings WHERE id = ?", (rating_id,))
-    rating = cursor.fetchone()
-    conn.close()
-    return dict_from_row(rating)
-
-def get_movie_ratings(movie_id: int) -> List[Dict]:
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM ratings WHERE movie_id = ?", (movie_id,))
-    ratings = cursor.fetchall()
-    conn.close()
-    return dicts_from_rows(ratings)
 
 # Favorites
 def add_favorite(movie_id: int, user_id: int) -> Dict:

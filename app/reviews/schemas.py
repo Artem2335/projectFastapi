@@ -8,18 +8,6 @@ class ReviewCreate(BaseModel):
     text: str
     rating: Optional[int] = None
 
-    class Config:
-        from_attributes = True
-
-
-class ReviewUpdate(BaseModel):
-    """Schema for updating a review"""
-    text: Optional[str] = None
-    rating: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
 
 class ReviewResponse(BaseModel):
     """Schema for review response"""
@@ -27,9 +15,10 @@ class ReviewResponse(BaseModel):
     movie_id: int
     user_id: int
     text: str
-    rating: Optional[int]
+    rating: Optional[int] = None
     approved: bool
-    created_at: Optional[datetime]
+    username: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
