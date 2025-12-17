@@ -1,10 +1,17 @@
 from sqlalchemy import text, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base, str_uniq, int_pk
-from typing import List
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.reviews.models import Review, Rating
+    from app.favorites.models import Favorite
 
 
 class User(Base):
+    """User model"""
+    __tablename__ = "users"
+    
     id: Mapped[int_pk]
     email: Mapped[str_uniq]
     password: Mapped[str]
@@ -15,9 +22,9 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(default=False, server_default=text('false'), nullable=False)
 
     # Relationships
-    reviews: Mapped[List["Review"]] = relationship("Review", back_populates="user", cascade="all, delete-orphan")
-    ratings: Mapped[List["Rating"]] = relationship("Rating", back_populates="user", cascade="all, delete-orphan")
-    favorites: Mapped[List["Favorite"]] = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+    reviews: Mapped[List["Review"]] = relationship("Review", back_populates="user", cascade="all, delete-orphan", foreign_keys="Review.user_id")
+    ratings: Mapped[List["Rating"]] = relationship("Rating", back_populates="user", cascade="all, delete-orphan", foreign_keys="Rating.user_id")
+    favorites: Mapped[List["Favorite"]] = relationship("Favorite", back_populates="user", cascade="all, delete-orphan", foreign_keys="Favorite.user_id")
 
     extend_existing = True
 
