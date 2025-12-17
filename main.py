@@ -1,19 +1,88 @@
-import subprocess
 import sys
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from fastapi import FastAPI, status
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from app.users.router import router as router_users
+from app.movies.router import router as router_movies
+from app.reviews.router import router as router_reviews
+from app.favorites.router import router as router_favorites
+
+# Import all models for database initialization
+from app.users.models import User
+from app.movies.models import Movie
+from app.reviews.models import Review, Rating
+from app.favorites.models import Favorite
+
+from app import db
+import os
+
+# Initialize database if not exists
+if not Path(__file__).parent.joinpath('kinovzor.db').exists():
+    print("\n📁 Database not found. Creating...")
+    from init_db import init_db
+    init_db()
+    print("\n🍋 Loading seed data...")
+    from seed_db import seed_movies_and_reviews
+    seed_movies_and_reviews()
+    print("\n✅ All ready!\n")
+
+app = FastAPI(
+    title="KinoVzor API",
+    description="Movie review and rating platform",
+    version="1.0.0"
+)
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers FIRST (before static files)
+app.include_router(router_users)
+app.include_router(router_movies)
+app.include_router(router_reviews)
+app.include_router(router_favorites)
+
+# Get the correct path for static files
+STATIC_DIR = Path(__file__).parent / "app" / "static"
+
+# Mount static files
+if STATIC_DIR.exists():
+    app.mount('/static', StaticFiles(directory=str(STATIC_DIR)), 'static')
+else:
+    print(f"\n⚠️ Warning: Static directory not found at {STATIC_DIR}")
+
+# Serve index.html from templates folder
+@app.get('/')
+async def root():
+    templates_dir = Path(__file__).parent / "app" / "templates"
+    index_file = templates_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file), media_type="text/html")
+    else:
+        return {"message": "Welcome to KinoVzor API"}
 
 if __name__ == "__main__":
-    # Run uvicorn from project root
-    subprocess.run([
-        sys.executable,
-        "-m",
-        "uvicorn",
-        "app.main:app",
-        "--host", "127.0.0.1",
-        "--port", "8000",
-        "--reload"
-    ])
+    import uvicorn
+    
+    print("\n" + "="*50)
+    print("🌟 KinoVzor - Movie Review Platform")
+    print("="*50)
+    print("\n🚀 Starting server...\n")
+    
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )
