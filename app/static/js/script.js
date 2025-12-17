@@ -237,11 +237,11 @@ async function toggleFavorite(event, movieId) {
     const isFavorite = button.classList.contains('kv-fav-btn-active');
     
     if (isFavorite) {
-      await apiCall('DELETE', `/movies/${movieId}/favorites?user_id=${currentUser.id}`);
+      await apiCall('DELETE', `/favorites/movies/${movieId}?user_id=${currentUser.id}`);
       button.classList.remove('kv-fav-btn-active');
       button.textContent = '☆';
     } else {
-      await apiCall('POST', `/movies/${movieId}/favorites?user_id=${currentUser.id}`);
+      await apiCall('POST', `/favorites/movies/${movieId}?user_id=${currentUser.id}`);
       button.classList.add('kv-fav-btn-active');
       button.textContent = '★';
     }
@@ -263,7 +263,7 @@ async function deleteReview(reviewId, movieId) {
   }
   
   try {
-    await apiCall('DELETE', `/movies/reviews/${reviewId}`);
+    await apiCall('DELETE', `/reviews/${reviewId}`);
     alert('Рецензия удалена');
     openMovie(movieId);
     updateCounters();
@@ -279,7 +279,7 @@ async function openMovie(mid) {
   
   try {
     const movie = await apiCall('GET', `/movies/${mid}`);
-    const reviews = await apiCall('GET', `/movies/${mid}/reviews?approved_only=false`);
+    const reviews = await apiCall('GET', `/reviews/movies/${mid}?approved_only=false`);
     
     // Получаем рейтинги из таблицы ratings
     let ratingStats = null;
@@ -405,7 +405,7 @@ async function submitReview(mid) {
   }
 
   try {
-    await apiCall('POST', `/movies/${mid}/reviews?user_id=${currentUser.id}`, {
+    await apiCall('POST', `/reviews/movies/${mid}?user_id=${currentUser.id}`, {
       text: txt,
       rating: currentMovieRating,
     });
@@ -439,7 +439,7 @@ async function removeFavorite(movieId) {
   if (!currentUser) return;
   
   try {
-    await apiCall('DELETE', `/movies/${movieId}/favorites?user_id=${currentUser.id}`);
+    await apiCall('DELETE', `/favorites/movies/${movieId}?user_id=${currentUser.id}`);
     renderProfile();
     renderFilms(); // Обновим звёзды на карточках
   } catch (e) {
@@ -457,7 +457,7 @@ async function renderProfile() {
     // Get user favorites
     let favoritesHTML = '';
     try {
-      const favorites = await apiCall('GET', `/movies/user/${currentUser.id}/favorites`);
+      const favorites = await apiCall('GET', `/favorites/users/${currentUser.id}`);
       if (Array.isArray(favorites) && favorites.length > 0) {
         favoritesHTML = `
           <div class="kv-profile-block">
